@@ -1,0 +1,104 @@
+@startuml
+' Требуется C4-PlantUML (Container)
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title C4: Container Diagram — "AI Avatar Experts System"
+
+Person_Ext(it_user, "ИТ-пользователь", "Разработчики, архитекторы, SRE")
+Person_Ext(biz_user, "Бизнес-пользователь", "Менеджеры, аналитики")
+Person_Ext(admin, "Администратор платформы", "Настройка источников, профилей, доступов")
+
+System_Ext(sso, "SSO", "OIDC / SAML")
+System_Ext(ad, "Active Directory", "LDAP / Kerberos")
+System_Ext(channels, "Каналы: YChat / Telegram", "Webhook REST/JSON")
+System_Ext(conf, "Confluence / Яга.Статьи", "Статьи, ADR, регламенты")
+System_Ext(jira, "Jira / Яга", "Задачи, комментарии, решения")
+System_Ext(git, "GitLab / Gitflame", "Код, Docs")
+System_Ext(llm, "Провайдер LLM", "API генерации")
+
+System_Boundary(sud, "AI Avatar Experts System") {
+
+  Container(webapp, "Web App", "TypeScript/React", "UI портала для вопросов, истории, оценок; REST к Backend")
+  Container(mobile, "Mobile App", "Kotlin/Swift/Flutter", "Мобильный клиент; REST к Backend")
+  Container(chat_api, "Chatbot API Gateway", "Java (Spring Boot)", "REST Webhook для каналов (YChat/Telegram); маршрутизация запросов")
+
+  Container(backend, "Backend (Core Services)", "Java (Spring Boot)", "Доменная логика, оркестрация запросов, RBAC/ABAC, аудит; REST/JSON")
+  Container(admin_ui, "Admin UI", "TypeScript/React", "Управление источниками, профилями аватаров, политиками доступа; REST к Backend")
+
+  Container(km_orchestrator, "Knowledge Orchestrator", "Java (Spring Boot)", "Ингест, нормализация, версионирование знаний; REST/Async")
+  Container(prompt_orchestrator, "Prompt/LLM Gateway", "Java (Spring Boot)", "Обогащение контекста, конструирование prompt, вызовы LLM; REST")
+
+  ContainerDb(vector_db, "Vector DB", "Qdrant/Pinecone/Weaviate", "Хранилище embeddings; gRPC/HTTP")
+  ContainerDb(search_idx, "Full-text Search", "OpenSearch/Elasticsearch", "Поиск по документам; REST")
+  ContainerDb(cache, "Cache", "Redis", "Кеш ответов, фич, сессий; RESP/TCP")
+  ContainerDb(rdbms, "Relational DB", "PostgreSQL", "Профили аватаров, орг.данные, аудит; SQL/TCP")
+  ContainerDb(objstore, "Object Storage", "S3-совместимое", "Файлы/версии документов; S3 API")
+
+  ContainerQueue(mbroker, "Message Broker", "Kafka/RabbitMQ", "Очереди для ETL, событий и фоновых задач")
+  Container(mon, "Observability & Audit", "Prometheus/Loki/Grafana", "Метрики, логи, трассировки, аудиторные события")
+  Container(security, "Access Control Layer", "Java Policy Engine", "Проверка политик (RBAC/ABAC), маскирование/фильтрация данных; REST")
+}
+
+' --- Пользователи -> Система
+Rel(it_user, webapp, "Использует", "HTTPS")
+Rel(it_user, mobile, "Использует", "HTTPS")
+Rel(biz_user, webapp, "Использует", "HTTPS")
+Rel(admin, admin_ui, "Администрирует", "HTTPS")
+
+' --- Каналы и внешние системы
+Rel(channels, chat_api, "Отправляет пользовательские сообщения", "REST/JSON Webhook")
+Rel(chat_api, channels, "Возвращает ответы", "REST/JSON")
+
+Rel(webapp, sso, "Аутентификация/SSO", "OIDC/SAML (HTTPS)")
+Rel(mobile, sso, "Аутентификация/SSO", "OIDC/SAML (HTTPS)")
+Rel(admin_ui, sso, "SSO", "OIDC/SAML (HTTPS)")
+Rel(backend, ad, "Проверка учетных записей/групп", "LDAP (LDAPS), Kerberos")
+
+' --- Внутренние связи клиентов
+Rel(webapp, backend, "REST API", "HTTPS/JSON")
+Rel(mobile, backend, "REST API", "HTTPS/JSON")
+Rel(admin_ui, backend, "REST API (админ)", "HTTPS/JSON")
+Rel(chat_api, backend, "Маршрутизация запросов/сессий", "REST/JSON")
+
+' --- Ядро и знания
+Rel(backend, security, "Авторизация запросов", "REST/JSON")
+Rel(backend, cache, "Кеширование ответов/контекста", "RESP/TCP")
+Rel(backend, rdbms, "CRUD/чтение метаданных", "JDBC/SQL")
+Rel(backend, mbroker, "Публикация событий/тасков", "AMQP/HTTP/Kafka")
+Rel(backend, km_orchestrator, "Поиск/извлечение знаний", "REST/JSON")
+Rel(backend, prompt_orchestrator, "Генерация ответов (RAG/LLM)", "REST/JSON")
+
+Rel(km_orchestrator, conf, "Ингест статей/ADR", "REST/JSON, Webhooks")
+Rel(km_orchestrator, jira, "Ингест задач/комментариев", "REST/JSON")
+Rel(km_orchestrator, git, "Ингест репозиториев/docs", "Git/HTTPS, REST")
+Rel(km_orchestrator, vector_db, "Upsert/Query embeddings", "HTTP/gRPC")
+Rel(km_orchestrator, search_idx, "Индексирование текста", "REST/JSON")
+Rel(km_orchestrator, objstore, "Хранение артефактов", "S3 API")
+Rel(km_orchestrator, mbroker, "Фоновые pipeline-и", "AMQP/HTTP/Kafka")
+
+' --- Prompt/LLM
+Rel(prompt_orchestrator, vector_db, "Ретрив по векторам (RAG)", "HTTP/gRPC")
+Rel(prompt_orchestrator, search_idx, "Фуллтекстовый ретрив", "REST")
+Rel(prompt_orchestrator, cache, "Кеширование контекстов/prompts", "RESP/TCP")
+Rel(prompt_orchestrator, llm, "Вызов LLM провайдера", "REST/JSON over HTTPS")
+
+' --- Наблюдаемость и аудит
+Rel(backend, mon, "Метрики/логи/трейсы", "OpenMetrics/OTLP/HTTP")
+Rel(km_orchestrator, mon, "Метрики/логи", "OpenMetrics/OTLP/HTTP")
+Rel(prompt_orchestrator, mon, "Метрики/логи", "OpenMetrics/OTLP/HTTP")
+Rel(chat_api, mon, "Метрики/логи", "OpenMetrics/OTLP/HTTP")
+Rel(security, mon, "Аудит политик", "Logs/OTLP")
+
+' --- Секьюрити слой
+Rel(webapp, security, "Проверка прав на операции", "REST/JSON")
+Rel(mobile, security, "Проверка прав", "REST/JSON")
+Rel(admin_ui, security, "Проверка прав (админ-функции)", "REST/JSON")
+Rel(km_orchestrator, security, "Политики доступа к источникам", "REST/JSON")
+
+' --- Данные и кеши
+Rel(backend, objstore, "Хранение вложений/экспорт ответов", "S3 API")
+Rel(backend, vector_db, "Поиск ближайших контекстов (опционально)", "HTTP/gRPC")
+Rel(backend, search_idx, "Поиск по текстам (опционально)", "REST")
+
+SHOW_LEGEND()
+@enduml
