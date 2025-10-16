@@ -1,0 +1,175 @@
+@startuml
+' ==========================================================================================
+' Project: AI Avatar Experts System
+' Diagram: UML Class — User & Avatar Profile Service
+' Author: System Architect
+' Version: 1.0
+' Date: 2025-10-16
+'
+' Purpose:
+'   Диаграмма описывает модель данных сервиса User & Avatar Profile Service,
+'   который управляет профилями пользователей, связанных с ними AI-аватарами,
+'   настройками доступа и персональными данными в рамках внутреннего контура.
+'
+' Context:
+'   • Защита ПДн по 152-ФЗ: шифрование, минимизация, аудит доступа
+'   • Локализация хранения данных в РФ (PostgreSQL)
+'   • SLA ≥ 99.95%, микросервисная архитектура (REST / JSON API)
+' ==========================================================================================
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+title UML Class Diagram — User & Avatar Profile Service
+
+package "domain.profile" <<Rectangle>> {
+
+  class User {
+    +UUID id
+    +String username
+    +String email
+    +String phoneMasked
+    +String department
+    +String position
+    +boolean active
+    +LocalDateTime createdAt
+    +LocalDateTime updatedAt
+    --
+    +List<Avatar> avatars
+    +List<UserConsent> consents
+  }
+
+  class Avatar {
+    +UUID id
+    +String name
+    +String role
+    +String description
+    +AvatarStatus status
+    +String language
+    +String modelVersion
+    +LocalDateTime createdAt
+    +LocalDateTime lastTrained
+    --
+    +TrainingDataset dataset
+    +Map<String, Object> metadata
+  }
+
+  enum AvatarStatus {
+    CREATED
+    TRAINING
+    ACTIVE
+    SUSPENDED
+    DELETED
+  }
+
+  class TrainingDataset {
+    +UUID id
+    +String source
+    +int documentsCount
+    +LocalDateTime lastUpdate
+    +String vectorIndexRef
+  }
+
+  class UserConsent {
+    +UUID id
+    +ConsentType type
+    +LocalDateTime grantedAt
+    +LocalDateTime revokedAt
+    +boolean active
+  }
+
+  enum ConsentType {
+    PERSONAL_DATA_PROCESSING
+    ACTIVITY_LOGGING
+    FEEDBACK_COLLECTION
+  }
+
+  class AccessPolicy {
+    +UUID id
+    +String name
+    +AccessLevel level
+    +String description
+    +boolean active
+  }
+
+  enum AccessLevel {
+    READ_ONLY
+    READ_WRITE
+    ADMIN
+  }
+
+  class AuditEvent {
+    +UUID id
+    +UUID userId
+    +String action
+    +String targetEntity
+    +String ipAddress
+    +LocalDateTime timestamp
+    +String details
+  }
+
+}
+
+package "security" {
+  class EncryptionService {
+    +String encrypt(String data)
+    +String decrypt(String cipher)
+    +String hash(String data)
+  }
+
+  class MaskingUtil {
+    +String maskEmail(String email)
+    +String maskPhone(String phone)
+  }
+}
+
+package "repository" {
+  class UserRepository
+  class AvatarRepository
+  class ConsentRepository
+  class PolicyRepository
+  class AuditRepository
+}
+
+package "service" {
+  class UserService {
+    +User getUser(UUID id)
+    +User createUser(User u)
+    +User updateUser(User u)
+    +void deactivateUser(UUID id)
+  }
+
+  class AvatarService {
+    +Avatar createAvatar(User user, String name)
+    +Avatar trainAvatar(UUID id)
+    +Avatar getAvatar(UUID id)
+    +void deleteAvatar(UUID id)
+  }
+
+  class PolicyService {
+    +boolean checkAccess(UUID userId, String resource, AccessLevel required)
+  }
+
+  class AuditService {
+    +void logEvent(AuditEvent event)
+  }
+}
+
+' --- Связи между основными сущностями
+User "1" -- "0..*" Avatar : owns >
+User "1" -- "0..*" UserConsent : gives >
+User "1" -- "0..*" AuditEvent : produces >
+Avatar "1" -- "1" TrainingDataset : uses >
+User "*" -- "*" AccessPolicy : "granted via roles"
+
+' --- Связи между слоями
+UserService --> UserRepository
+AvatarService --> AvatarRepository
+PolicyService --> PolicyRepository
+AuditService --> AuditRepository
+UserService --> EncryptionService
+UserService --> MaskingUtil
+UserService --> AuditService
+AvatarService --> AuditService
+
+@enduml
