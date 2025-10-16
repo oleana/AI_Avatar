@@ -47,6 +47,7 @@ Rel(ai_platform, idp, "Проверяет токены и роли", "OIDC/SAML/
 
 Rel(ai_platform, llm, "Формирует промпты / получает ответы", "API")
 Rel(ai_platform, obs, "Отправляет метрики и логи", "Metrics/Logs/Audit")
+Rel(ai_platform, orbita, "Обучается на основе действий эксперта и его комментариев", "API")
 
 ' --- Легенда (необязательно)
 SHOW_LEGEND()
