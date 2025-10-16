@@ -26,7 +26,7 @@ Container_Boundary(backend, "Backend (Core Services) — Java / Spring Boot") {
 }
 
 ' --- Интеграции и хранилища
-ComponentDb(pg, "Postgre Pro / Pangolin", "Cluster", "Основная БД: профили, настройки, журналы.")
+ComponentDb(pg, "Postgres Pro / Pangolin", "Cluster", "Основная БД: профили, настройки, журналы.")
 ComponentDb(redis, "Redis Cluster", "Cache", "Кеш сессий и быстрых ответов.")
 ComponentDb(os, "OpenSearch", "Search", "Полнотекстовый индекс документов.")
 Component_Ext(pango, "Pangoline Vector DB", "Vectors", "Векторный ретрив для RAG.")

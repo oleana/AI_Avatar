@@ -45,7 +45,7 @@ Container_Boundary(ko, "Knowledge Orchestrator — Java / Spring Boot") {
 }
 
 ' --- Хранилища и интеграции
-ComponentDb(pg, "PostgreSQL (RU DC)", "Cluster", "Метаданные, статусы pipeline, журналы.")
+ComponentDb(pg, "Postgres PRO / Pangolin", "Cluster", "Метаданные, статусы pipeline, журналы.")
 ComponentDb(os, "OpenSearch", "Search", "Полнотекстовый индекс нормализованных документов.")
 ComponentDb(pango, "Pangoline Vector DB", "Vectors", "Хранилище embeddings для RAG.")
 ComponentQueue(broker, "Kafka / RabbitMQ", "Async", "Транспорт задач/событий, ретраи.")
