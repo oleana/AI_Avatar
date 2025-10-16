@@ -1,0 +1,85 @@
+@startuml
+' ==========================================================================================
+' Project: AI Avatar Experts System
+' Diagram: C4 Component — Knowledge Orchestrator (simplified)
+' Author: System Architect
+' Version: 1.1
+' Date: 2025-10-16
+'
+' Purpose:
+'   Упрощённая компонентная схема подсистемы Knowledge Orchestrator:
+'   интеграции с источниками, очистка/нормализация, классификация,
+'   генерация embeddings и индексирование для RAG.
+'
+' Context:
+'   • Внутренний корпоративный контур
+'   • SLA ≥99.95%, асинхронные pipeline'ы, мониторинг
+' ==========================================================================================
+
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+LAYOUT_LEFT_RIGHT()
+
+Container_Boundary(ko, "Knowledge Orchestrator — Java / Spring Boot") {
+
+  ' --- Интеграции с источниками
+  Component(confluence_connector, "Confluence Connector", "Java + REST", "Импорт статей/ADR из Confluence / Wiki.")
+  Component(jira_connector, "Jira Connector", "Java + REST", "Импорт задач и комментариев из Jira.")
+  Component(git_connector, "Git Connector", "Java + Git API", "Импорт docs/README/кода из GitLab / GitHub / Gitflame.")
+  Component(crm_connector, "CRM/BPM Integrator", "Java + REST", "Интеграция с внутренними бизнес-системами.")
+
+  ' --- Обработка контента
+  Component(normalizer, "Data Normalization & Cleaning", "Java", "Очистка HTML/Markdown, нормализация структуры, извлечение текста.")
+  Component(enricher, "Metadata Enricher", "Java", "Обогащение метаданными: автор, система, тип, дата.")
+  Component(classifier, "Content Classifier", "Java + ML", "Классификация по темам, системам и типам контента.")
+
+  ' --- Индексация и embeddings
+  Component(embedding_service, "Embedding Builder", "Java + Python worker", "Генерация embeddings (локальные модели/LLM API).")
+  Component(indexer, "Indexing Service", "Java", "Запись в OpenSearch и Vector DB.")
+  Component(schema_registry, "Schema Registry", "Java", "Схемы метаданных и форматы документов.")
+
+  ' --- Оркестрация и надёжность
+  Component(pipeline_manager, "Pipeline Orchestrator", "Spring Batch / Kafka Streams", "Оркестрация ETL: импорт → обработка → индексация.")
+  Component(queue_manager, "Queue Manager", "Kafka / RabbitMQ", "Очереди задач, ретраи, фоновые воркеры.")
+  Component(health, "Health & Monitoring", "Spring Boot Actuator", "Health-checks, retries, circuit breaker, SLA.")
+  Component(audit, "Audit & Logging", "Java", "Журналы выполнения ETL и ошибок.")
+}
+
+' --- Хранилища и интеграции
+ComponentDb(pg, "PostgreSQL (RU DC)", "Cluster", "Метаданные, статусы pipeline, журналы.")
+ComponentDb(os, "OpenSearch", "Search", "Полнотекстовый индекс нормализованных документов.")
+ComponentDb(pango, "Pangoline Vector DB", "Vectors", "Хранилище embeddings для RAG.")
+ComponentQueue(broker, "Kafka / RabbitMQ", "Async", "Транспорт задач/событий, ретраи.")
+Component_Ext(mon, "Monitoring Stack", "Prometheus / Grafana / Loki", "Метрики, логи, трассировки.")
+Component_Ext(backend, "Backend Core Services", "Java / REST", "Запросы на обновление индексов и контекста.")
+
+' --- Потоки данных
+Rel(confluence_connector, pipeline_manager, "Импорт контента", "Async / JSON")
+Rel(jira_connector, pipeline_manager, "Импорт тикетов/комментов", "Async / JSON")
+Rel(git_connector, pipeline_manager, "Импорт docs/репозиториев", "Async / JSON")
+Rel(crm_connector, pipeline_manager, "Импорт предметных данных", "Async / JSON")
+
+Rel(pipeline_manager, normalizer, "Очистка/нормализация", "Internal API")
+Rel(normalizer, enricher, "Обогащение метаданными", "Internal API")
+Rel(enricher, classifier, "Классификация", "Internal API")
+
+Rel(classifier, embedding_service, "Генерация embeddings", "Async / gRPC / REST")
+Rel(embedding_service, indexer, "Передача embeddings", "Async / REST")
+Rel(indexer, os, "Индексирование текста", "REST / JSON")
+Rel(indexer, pango, "Upsert embeddings", "HTTP / gRPC")
+
+Rel(pipeline_manager, queue_manager, "Оркестрация/ретраи", "AMQP / Kafka")
+Rel(pipeline_manager, pg, "Статусы и метаданные", "JDBC / SQL")
+Rel(audit, pg, "Журналы выполнения", "JDBC / SQL")
+
+Rel(health, mon, "Метрики/статусы SLA", "OTLP / HTTPS")
+Rel(audit, mon, "Технические логи/ошибки", "OTLP / HTTPS")
+Rel(backend, indexer, "Триггеры переиндексации", "REST / HTTPS")
+Rel(backend, embedding_service, "Запрос embeddings", "REST / HTTPS")
+
+' --- Примечания
+' 1) Упрощено: без компонентов PII/ПДн, только общая обработка контента.
+' 2) SLA ≥99.95% достигается за счёт кластеризации и асинхронных pipeline'ов.
+' 3) Централизованный мониторинг: Prometheus / Grafana / Loki.
+
+SHOW_LEGEND()
+@enduml

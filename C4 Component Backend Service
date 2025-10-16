@@ -1,0 +1,60 @@
+@startuml
+' C4-PlantUML (Component)
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title C4: Component — Backend (Core Services)
+caption Внутренний контур, SLA ≥99.95%, базовая безопасность (SSO, RBAC)
+
+LAYOUT_LEFT_RIGHT()
+
+Container_Boundary(backend, "Backend (Core Services) — Java / Spring Boot") {
+
+  ' --- Внешняя точка входа
+  Component(api_gateway, "API Gateway", "Spring Cloud Gateway", "Маршрутизация, rate limiting, circuit breaker, JWT-валидация, метрики.")
+
+  Component(auth_service, "Auth & Session Service", "Spring Security / OIDC/SAML", "Интеграция с корпоративным SSO/AD, сессии/токены.")
+
+  ' --- Доменные сервисы
+  Component(query_service, "Query Orchestration Service", "Java", "Оркестрация пользовательских запросов, вызовы Retrieval/LLM.")
+  Component(profile_service, "User & Avatar Profile Service", "Java", "Профили пользователей и аватаров; базовые меры защиты и RBAC.")
+  Component(rag_service, "Context Retrieval Service", "Java", "RAG: поиск знаний в Vector DB и OpenSearch, сбор контекста.")
+  Component(feedback_service, "Feedback Service", "Java", "Сбор пользовательских оценок и комментариев.")
+
+  ' --- Надёжность и наблюдаемость
+  Component(health, "Health & Resilience", "Spring Boot Actuator", "Liveness/Readiness, retries, circuit breakers, blue-green/rolling, autoscaling.")
+  Component(audit, "Audit & Logging", "Java", "Тех.аудит и журналирование событий сервиса.")
+}
+
+' --- Интеграции и хранилища
+ComponentDb(pg, "PostgreSQL (RU DC)", "Cluster", "Основная БД: профили, настройки, журналы.")
+ComponentDb(redis, "Redis Cluster", "Cache", "Кеш сессий и быстрых ответов.")
+ComponentDb(os, "OpenSearch", "Search", "Полнотекстовый индекс документов.")
+Component_Ext(pango, "Pangoline Vector DB", "Vectors", "Векторный ретрив для RAG.")
+ComponentQueue(broker, "Kafka / RabbitMQ", "Async", "Очереди/события, фоновые задачи.")
+Component_Ext(sso, "SSO / AD", "OIDC/SAML + LDAP", "Аутентификация, группы/роли.")
+Component_Ext(mon, "Monitoring / Logging", "Prometheus / Grafana / Loki", "Метрики, логи, трассировки.")
+
+' --- Внутренние связи
+Rel(api_gateway, auth_service, "Аутентификация и валидация токенов", "HTTPS / OIDC/SAML")
+Rel(api_gateway, query_service, "Проксирует запросы клиентов", "HTTPS / REST")
+
+Rel(query_service, rag_service, "Получение контекста знаний", "HTTPS / REST")
+Rel(query_service, profile_service, "Работа с профилями", "HTTPS / REST")
+Rel(query_service, feedback_service, "Передача обратной связи", "HTTPS / REST")
+
+Rel(rag_service, pango, "Vector search", "HTTPS / gRPC")
+Rel(rag_service, os, "Full-text search", "HTTPS / REST")
+
+Rel(profile_service, pg, "Хранение профилей и настроек", "JDBC / TLS")
+Rel(audit, pg, "Журналы/события (по необходимости)", "JDBC / TLS")
+
+Rel(backend, redis, "Кеширование", "TCP / RESP")
+Rel(backend, broker, "Асинхронные задачи/события", "AMQP / Kafka")
+
+Rel(audit, mon, "Тех.логи и метрики", "HTTPS / OTLP")
+Rel(health, mon, "SLI/SLO, алерты", "HTTPS / OTLP")
+
+Rel(auth_service, sso, "SSO / Directory", "OIDC / SAML / LDAP")
+
+SHOW_LEGEND()
+@enduml
