@@ -1,0 +1,52 @@
+@startuml
+' Требуется C4-PlantUML
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title C4: Контекст системы "Платформа AI-Аватаров ИТ-специалистов"
+
+' --- Люди (Actors)
+Person(it_user, "ИТ-пользователь", "Сотрудники ИТ: разработчики, архитекторы, SRE. Задают вопросы о системах и процессах.")
+Person(biz_user, "Бизнес-пользователь", "Задают вопросы о продуктах/процессах, управленческие запросы, запросы о создании и изменении систем.")
+Person(admin, "Администратор платформы", "Настраивает источники, профили аватаров, доступы.")
+Person(sme, "Прототип-специалист", "Реальные CTO/архитекторы/лиды — источник знаний для обучения.")
+
+' --- Система в фокусе (SuD)
+System_Boundary(sud, "Платформа AI-Аватаров ИТ-специалистов") {
+  System(ai_platform, "AI-Avatar IT Experts Platform", "Принимает вопросы, ищет знания, оркестрирует LLM, выдает ответы через каналы.")
+}
+
+' --- Внешние системы
+System_Ext(conf, "Confluence / Яга.Статьи / Прочие текстовые документы, написанные экспертом", "Статьи, ADR, регламенты.")
+System_Ext(jira, "Jira / Яга", "Задачи, комментарии, решения.")
+System_Ext(git, "GitLab / Gitflame", "Код, README, docs.")
+System_Ext(apps, "CRM / BPM / прочие ИТ системы компании", "Предметные данные и API.")
+System_Ext(idp, "SSO / AD", "Аутентификация и авторизация.")
+System_Ext(channels, "YChat / Telegram ", "Каналы общения с пользователями.")
+System_Ext(obs, "Monitoring / Analytics", "Логи, метрики, аудит.")
+System_Ext(llm, "Провайдер LLM", "Генерация и обработка естественного языка.")
+
+' --- Связи (Relationships)
+Rel(it_user, channels, "Задает вопросы через", "Chat/UI")
+Rel(biz_user, channels, "Задает вопросы через", "Chat/UI")
+Rel(admin, ai_platform, "Управляет конфигурацией, доступами и профилями", "Admin UI/API")
+Rel(sme, ai_platform, "Предоставляет знания/обратную связь для обучения", "Импорт/Feedback")
+
+Rel(channels, ai_platform, "Передает запросы пользователей", "Webhook/API")
+Rel(ai_platform, channels, "Возвращает ответы", "Webhook/API")
+
+Rel(ai_platform, conf, "Читает знания", "API/Indexing")
+Rel(ai_platform, jira, "Читает задачи/комментарии", "API/Indexing")
+Rel(ai_platform, git, "Читает репозитории/Docs", "API/Indexing")
+Rel(ai_platform, apps, "Интегрируется для предметных данных", "API")
+
+Rel(it_user, idp, "Аутентифицируется через", "OIDC/SAML")
+Rel(biz_user, idp, "Аутентифицируется через", "OIDC/SAML")
+Rel(admin, idp, "Аутентифицируется через", "OIDC/SAML")
+Rel(ai_platform, idp, "Проверяет токены и роли", "OIDC/SAML/JWT")
+
+Rel(ai_platform, llm, "Формирует промпты / получает ответы", "API")
+Rel(ai_platform, obs, "Отправляет метрики и логи", "Metrics/Logs/Audit")
+
+' --- Легенда (необязательно)
+SHOW_LEGEND()
+@enduml
