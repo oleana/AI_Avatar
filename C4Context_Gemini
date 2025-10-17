@@ -1,0 +1,39 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+' Определение заголовка и участников
+title Диаграмма C4 Context: Система AI-Аватаров ИТ-Специалистов
+
+Person(employee, "Сотрудник компании", "Задает вопросы по ИТ-системам и процессам.")
+Person(admin, "Администратор Системы", "Управляет аватарами, источниками данных и анализирует работу системы.")
+
+' Определение нашей системы
+System_Boundary(c1, "Система AI-Аватаров ИТ-Специалистов") {
+    System(ai_system, "AI-Аватар", "Предоставляет экспертные ответы на ИТ-вопросы на основе корпоративных данных.")
+}
+
+' Определение внешних систем
+System_Ext(messenger, "Корпоративный мессенджер", "Канал взаимодействия (Slack, MS Teams)")
+System_Ext(knowledge_base, "База знаний", "Источник данных (Confluence)")
+System_Ext(task_tracker, "Трекер задач", "Источник данных (Jira, Youtrack)")
+System_Ext(vcs, "Система контроля версий", "Источник данных (GitLab, GitHub)")
+System_Ext(llm_service, "Внешний сервис LLM", "Провайдер базовой языковой модели (API OpenAI, Google, etc.)")
+System_Ext(auth_service, "Система аутентификации", "Проверка прав доступа (Active Directory, SSO)")
+
+' Определение взаимосвязей
+
+' Взаимодействие пользователей с системой
+Rel(employee, messenger, "Задает вопрос")
+Rel(messenger, ai_system, "Передает запрос пользователя")
+Rel_Back(messenger, ai_system, "Отправляет сгенерированный ответ")
+
+Rel(admin, ai_system, "Управляет конфигурацией и анализирует производительность")
+
+' Взаимодействие нашей системы с внешними системами
+Rel(ai_system, auth_service, "Проверяет аутентификацию пользователя", "LDAP/OAuth2")
+Rel(ai_system, knowledge_base, "Считывает и индексирует статьи для обучения", "API")
+Rel(ai_system, task_tracker, "Считывает и индексирует задачи и комментарии", "API")
+Rel(ai_system, vcs, "Анализирует код и обсуждения в Merge Requests", "API")
+Rel(ai_system, llm_service, "Отправляет промпты с контекстом и получает сгенерированный текст", "HTTPS/API")
+
+@enduml
